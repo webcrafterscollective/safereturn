@@ -1,0 +1,13 @@
+from __future__ import annotations
+
+from typing import Protocol
+
+
+class DeliveryProviderPort(Protocol):
+    async def quote(self, payload: dict[str, str]) -> dict[str, str]: ...
+
+    async def book(self, payload: dict[str, str]) -> dict[str, str]: ...
+
+    async def cancel(self, provider_ref: str) -> dict[str, str]: ...
+
+    async def track(self, provider_ref: str) -> dict[str, str]: ...
