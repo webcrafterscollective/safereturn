@@ -7,6 +7,7 @@ from app.models.item import Item
 from app.models.lost_item_report import LostItemReport
 from app.models.qr_sticker import QRSticker
 from app.models.refresh_token import RefreshToken
+from app.models.sticker_pack import StickerPack
 from app.models.user import User
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "LostItemReport",
     "QRSticker",
     "RefreshToken",
+    "StickerPack",
     "User",
 ]

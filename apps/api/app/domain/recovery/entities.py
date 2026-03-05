@@ -49,9 +49,11 @@ class QRSticker:
 
     id: str
     code: str
-    owner_user_id: str
+    owner_user_id: str | None
+    pack_id: str | None
     item_id: str | None
     status: StickerStatus
+    assigned_once: bool
     created_at: datetime
 
 

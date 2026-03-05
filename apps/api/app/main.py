@@ -25,7 +25,7 @@ from app.core.logging import configure_logging
 from app.core.middleware import request_id_middleware, security_headers_middleware
 from app.core.settings import get_settings
 from app.metrics.prometheus import REQUEST_COUNT, REQUEST_LATENCY
-from app.routers.v1 import auth, health, metrics, recovery
+from app.routers.v1 import admin, auth, health, metrics, recovery
 
 logger = logging.getLogger(__name__)
 SWAGGER_OAUTH2_REDIRECT_PATH = "/doc/oauth2-redirect"
@@ -89,6 +89,7 @@ def create_app() -> FastAPI:
 
     # Routers: API versioned routes plus infra endpoints.
     application.include_router(auth.router, prefix="/api/v1")
+    application.include_router(admin.router, prefix="/api/v1")
     application.include_router(recovery.router, prefix="/api/v1")
     application.include_router(health.router)
     application.include_router(metrics.router)

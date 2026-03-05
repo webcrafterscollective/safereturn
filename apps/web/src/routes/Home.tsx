@@ -83,7 +83,7 @@ export function HomeRoute() {
           <Link href="/scan" className="rounded bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
             I found an item
           </Link>
-          <Link href="/inbox" className="rounded border border-brand-500 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-slate-800">
+          <Link href="/owner" className="rounded border border-brand-500 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-slate-800">
             Owner dashboard
           </Link>
           <a

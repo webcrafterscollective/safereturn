@@ -1,6 +1,6 @@
 """Repository for user persistence operations."""
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -31,3 +31,25 @@ class UserRepository:
         await self.session.commit()
         await self.session.refresh(user)
         return user
+
+    async def create_user_with_role(
+        self, *, email: str, password_hash: str, is_admin: bool
+    ) -> User:
+        """Create user with explicit admin role assignment."""
+        user = User(email=email, password_hash=password_hash, is_admin=is_admin)
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user
+
+    async def count_users(self) -> int:
+        """Return total number of users."""
+        count = await self.session.scalar(select(func.count()).select_from(User))
+        return int(count or 0)
+
+    async def count_admin_users(self) -> int:
+        """Return number of accounts with admin role."""
+        count = await self.session.scalar(
+            select(func.count()).select_from(User).where(User.is_admin.is_(True))
+        )
+        return int(count or 0)

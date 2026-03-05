@@ -4,6 +4,7 @@ import { Component, type ComponentChildren, type ComponentType, render } from "p
 import { Route, Router } from "wouter-preact";
 
 import { AppShell } from "./components/layout/AppShell";
+import { AdminRoute } from "./routes/Admin";
 import { HomeRoute } from "./routes/Home";
 import { InboxRoute } from "./routes/Inbox";
 import { LoginRoute } from "./routes/Login";
@@ -50,7 +51,9 @@ function AppRouter() {
       <Route path="/" component={HomeRoute} />
       <Route path="/login" component={LoginRoute} />
       <Route path="/scan" component={ScanRoute} />
+      <Route path="/owner" component={InboxRoute} />
       <Route path="/inbox" component={InboxRoute} />
+      <Route path="/admin" component={AdminRoute} />
       <Route path="/:rest*" component={HomeRoute} />
     </Router>
   );

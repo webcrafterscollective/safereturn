@@ -1,7 +1,17 @@
-/** Finder scan route for starting session and relaying anonymous message. */
-import { useState } from "preact/hooks";
+/** Finder scan route for session start, messaging, and claim-issue reporting. */
 
-import { ApiError, scanSticker, sendFinderMessage } from "../lib/api/client";
+import { useEffect, useState } from "preact/hooks";
+import { Link } from "wouter-preact";
+
+import { ApiError, reportClaimIssue, scanSticker, sendFinderMessage } from "../lib/api/client";
+
+function extractApiErrorCode(error: ApiError): string | null {
+  const envelope = error.details as
+    | { error?: { code?: string; message?: string } }
+    | null
+    | undefined;
+  return envelope?.error?.code ?? null;
+}
 
 export function ScanRoute() {
   const [stickerCode, setStickerCode] = useState("");
@@ -9,14 +19,25 @@ export function ScanRoute() {
   const [sessionToken, setSessionToken] = useState("");
   const [itemName, setItemName] = useState("");
   const [messageBody, setMessageBody] = useState("");
+  const [issueNote, setIssueNote] = useState("");
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
+  const [needsClaim, setNeedsClaim] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (code) {
+      setStickerCode(code);
+    }
+  }, []);
 
   async function handleScan(event: Event) {
     event.preventDefault();
     setError("");
     setFeedback("");
+    setNeedsClaim(false);
     setIsSubmitting(true);
     try {
       const response = await scanSticker({
@@ -27,8 +48,20 @@ export function ScanRoute() {
       setItemName(response.item_name);
       setFeedback("Session created. You can now send a message to the owner.");
     } catch (err: unknown) {
-      if (err instanceof ApiError && err.status === 404) {
-        setError("Sticker not found. Check the code and try again.");
+      if (err instanceof ApiError) {
+        const code = extractApiErrorCode(err);
+        if (err.status === 404) {
+          setError("Sticker not found. Check the code and try again.");
+        } else if (code === "STICKER_UNCLAIMED") {
+          setNeedsClaim(true);
+          setError(
+            "This sticker pack is not claimed yet. Ask the owner to register and claim the pack.",
+          );
+        } else if (code === "STICKER_DISABLED") {
+          setError("This sticker has been disabled.");
+        } else {
+          setError("Unable to start finder session right now.");
+        }
       } else {
         setError("Unable to start finder session right now.");
       }
@@ -57,6 +90,22 @@ export function ScanRoute() {
     }
   }
 
+  async function handleIssueReport(event: Event) {
+    event.preventDefault();
+    setError("");
+    setFeedback("");
+    setIsSubmitting(true);
+    try {
+      await reportClaimIssue(stickerCode.trim(), issueNote.trim());
+      setFeedback("Claim issue submitted. Support will review and issue replacement if needed.");
+      setIssueNote("");
+    } catch {
+      setError("Unable to submit claim issue right now.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <section className="mx-auto grid max-w-3xl gap-6">
       <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -75,7 +124,7 @@ export function ScanRoute() {
             value={stickerCode}
             onInput={(event) => setStickerCode((event.target as HTMLInputElement).value)}
             className="rounded border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-950"
-            placeholder="SAFE-ABCD-001"
+            placeholder="SR-AB12CD34EF"
           />
 
           <label className="text-sm font-medium" for="finder-note">
@@ -127,21 +176,55 @@ export function ScanRoute() {
             {isSubmitting ? "Sending..." : "Send Anonymous Message"}
           </button>
         </form>
-
-        {error && (
-          <p
-            className="mt-4 rounded border border-red-300 bg-red-50 p-2 text-sm text-red-700 dark:border-red-700 dark:bg-red-950/40 dark:text-red-300"
-            role="alert"
-          >
-            {error}
-          </p>
-        )}
-        {feedback && (
-          <p className="mt-4 rounded border border-emerald-300 bg-emerald-50 p-2 text-sm text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
-            {feedback}
-          </p>
-        )}
       </article>
+
+      {needsClaim && (
+        <article className="rounded-xl border border-amber-300 bg-amber-50 p-6 dark:border-amber-700 dark:bg-amber-950/30">
+          <h2 className="text-lg font-semibold text-amber-900 dark:text-amber-200">Unclaimed Sticker</h2>
+          <p className="mt-2 text-sm text-amber-800 dark:text-amber-300">
+            This sticker belongs to an unclaimed pack. The owner can{" "}
+            <Link href="/login" className="underline">
+              register/login
+            </Link>{" "}
+            and claim the pack first.
+          </p>
+          <form className="mt-4 grid gap-3" onSubmit={handleIssueReport}>
+            <label className="text-sm font-medium text-amber-900 dark:text-amber-200" for="issue-note">
+              If this sticker should already be active, report the issue
+            </label>
+            <textarea
+              id="issue-note"
+              required
+              minLength={5}
+              maxLength={500}
+              value={issueNote}
+              onInput={(event) => setIssueNote((event.target as HTMLTextAreaElement).value)}
+              className="min-h-20 rounded border border-amber-300 bg-white px-3 py-2 dark:border-amber-700 dark:bg-slate-950"
+              placeholder="Describe where you got this sticker and what happened."
+            />
+            <button
+              type="submit"
+              className="rounded border border-amber-400 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/50"
+            >
+              Submit Claim Issue
+            </button>
+          </form>
+        </article>
+      )}
+
+      {error && (
+        <p
+          className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-700 dark:border-red-700 dark:bg-red-950/40 dark:text-red-300"
+          role="alert"
+        >
+          {error}
+        </p>
+      )}
+      {feedback && (
+        <p className="rounded border border-emerald-300 bg-emerald-50 p-2 text-sm text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+          {feedback}
+        </p>
+      )}
     </section>
   );
 }

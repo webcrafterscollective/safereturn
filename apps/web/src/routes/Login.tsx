@@ -2,7 +2,7 @@
 import { useState } from "preact/hooks";
 import { useLocation } from "wouter-preact";
 
-import { ApiError, login, register } from "../lib/api/client";
+import { ApiError, login, register, storeSessionTokens } from "../lib/api/client";
 
 export function LoginRoute() {
   const [, setLocation] = useLocation();
@@ -20,8 +20,7 @@ export function LoginRoute() {
 
     try {
       const tokens = await login({ email, password });
-      localStorage.setItem("access_token", tokens.access_token);
-      localStorage.setItem("refresh_token", tokens.refresh_token);
+      storeSessionTokens(tokens);
       setLocation("/");
     } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 401) {

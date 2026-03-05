@@ -1,5 +1,15 @@
 """Pydantic schema package for API request and response contracts."""
 
+from app.schemas.admin import (
+    AdminOverviewResponse,
+    CreateUserAndAssignPackRequest,
+    CreateUserAndAssignPackResponse,
+    GeneratePackRequest,
+    GeneratePackResponse,
+    ListPacksResponse,
+    PackStickersResponse,
+    StickerPackSummary,
+)
 from app.schemas.auth import (
     LoginRequest,
     LogoutRequest,
@@ -9,24 +19,46 @@ from app.schemas.auth import (
     TokenResponse,
 )
 from app.schemas.recovery import (
+    ClaimIssueRequest,
+    ClaimIssueResponse,
+    ClaimPackRequest,
+    ClaimPackResponse,
     LostReportResponse,
     MarkItemLostRequest,
     OwnerInboxResponse,
+    OwnerItemSummary,
+    RegenerateStickerResponse,
     RegisterStickerRequest,
     RegisterStickerResponse,
     RelayMessageRequest,
     RelayMessageResponse,
     ScanStickerRequest,
     ScanStickerResponse,
+    StickerSummary,
+    UserItemsResponse,
+    UserStickersResponse,
 )
 
 __all__ = [
+    "AdminOverviewResponse",
+    "ClaimIssueRequest",
+    "ClaimIssueResponse",
+    "ClaimPackRequest",
+    "ClaimPackResponse",
+    "CreateUserAndAssignPackRequest",
+    "CreateUserAndAssignPackResponse",
+    "GeneratePackRequest",
+    "GeneratePackResponse",
+    "ListPacksResponse",
     "LoginRequest",
     "LogoutRequest",
     "LostReportResponse",
     "MarkItemLostRequest",
     "OwnerInboxResponse",
+    "OwnerItemSummary",
+    "PackStickersResponse",
     "RefreshRequest",
+    "RegenerateStickerResponse",
     "RegisterRequest",
     "RegisterResponse",
     "RegisterStickerRequest",
@@ -35,5 +67,9 @@ __all__ = [
     "RelayMessageResponse",
     "ScanStickerRequest",
     "ScanStickerResponse",
+    "StickerPackSummary",
+    "StickerSummary",
     "TokenResponse",
+    "UserItemsResponse",
+    "UserStickersResponse",
 ]

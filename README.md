@@ -13,6 +13,7 @@ SafeReturn business flow now included:
 - Finder scan session with expiring anonymous token
 - Anonymous finder-owner message relay
 - Owner inbox for secure replies
+- Admin portal for sticker pack generation and user provisioning
 
 ## Architecture Overview
 
@@ -45,6 +46,8 @@ Open:
 - API docs: `http://localhost:8000/doc`
 - OpenAPI: `http://localhost:8000/openapi.json`
 - Frontend: `http://localhost:8000/`
+- Owner dashboard: `http://localhost:8000/owner`
+- Admin portal: `http://localhost:8000/admin`
 
 Core recovery API samples:
 
@@ -155,6 +158,7 @@ docker compose -f docker-compose.prod.yml up -d
 - `503 on /health/ready`: check `DATABASE_URL`, DB container health, and migrations.
 - Swagger missing at `/doc`: confirm app started with `docs_url='/doc'` and reverse proxy points to API container.
 - Swagger blank page with CSP errors: this template serves Swagger JS/CSS/favicon from `/swagger-assets/*` (same-origin) and uses a docs-only CSP policy that permits inline bootstrap script. If you still see CSP errors, verify `/swagger-assets/swagger-ui-bundle.js` returns `200`.
+- Admin portal returns `403`: register/login once on a fresh database to bootstrap the first admin account. If your DB is old and has no admin users, the next registration is auto-promoted to admin.
 - `Bind for 0.0.0.0:5432 failed`: set `POSTGRES_PORT=5433` in `.env` or stop the process/container already using `5432`.
 - SPA route refresh returns 404: verify FastAPI fallback route and frontend `dist` exists in image.
 - `Cannot find module .../node_modules/vite/bin/vite.js` during Docker build: ensure `.dockerignore` excludes `apps/web/node_modules`, then rebuild with `docker compose -f docker-compose.dev.yml build --no-cache`.

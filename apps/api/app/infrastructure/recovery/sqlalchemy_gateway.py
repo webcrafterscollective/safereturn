@@ -65,21 +65,30 @@ class SqlAlchemyRecoveryRepository(RecoveryRepositoryPort):
         await self.session.refresh(model)
         return self._to_item(model)
 
-    async def create_sticker_for_owner(
+    async def attach_sticker_to_item(
         self,
         *,
+        sticker_code: str,
         owner_user_id: str,
-        code: str,
         item_id: str,
-        status: StickerStatus,
-    ) -> QRSticker:
-        model = QRStickerModel(
-            owner_user_id=owner_user_id,
-            code=code,
-            item_id=item_id,
-            status=status.value,
+    ) -> QRSticker | None:
+        stmt: Select[tuple[QRStickerModel]] = select(QRStickerModel).where(
+            QRStickerModel.code == sticker_code
         )
-        self.session.add(model)
+        result = await self.session.execute(stmt)
+        model = result.scalar_one_or_none()
+        if model is None:
+            return None
+        if model.owner_user_id != owner_user_id:
+            return None
+        if model.invalidated_at is not None:
+            return None
+        if model.item_id is not None or model.assigned_once:
+            return None
+
+        model.item_id = item_id
+        model.status = StickerStatus.ASSIGNED.value
+        model.assigned_once = True
         await self.session.commit()
         await self.session.refresh(model)
         return self._to_sticker(model)
@@ -250,8 +259,10 @@ class SqlAlchemyRecoveryRepository(RecoveryRepositoryPort):
             id=model.id,
             code=model.code,
             owner_user_id=model.owner_user_id,
+            pack_id=model.pack_id,
             item_id=model.item_id,
             status=StickerStatus(model.status),
+            assigned_once=model.assigned_once,
             created_at=model.created_at,
         )
 

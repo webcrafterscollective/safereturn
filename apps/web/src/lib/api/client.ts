@@ -1,13 +1,30 @@
-/** Typed HTTP client wrapper used by route-level API calls. */
+/** Typed API client and auth-session helpers for the SafeReturn frontend. */
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(
   /\/$/,
   "",
 ) ?? "";
 
+const ACCESS_TOKEN_KEY = "access_token";
+const REFRESH_TOKEN_KEY = "refresh_token";
+export const AUTH_CHANGED_EVENT = "safereturn:auth-changed";
+
 function apiUrl(path: string): string {
-  // Return API URL with optional Vite-configured base.
   return `${API_BASE_URL}${path}`;
+}
+
+function parseJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const payloadB64 = token.split(".")[1];
+    if (!payloadB64) {
+      return null;
+    }
+    const normalized = payloadB64.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = atob(normalized);
+    return JSON.parse(decoded) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
 export class ApiError extends Error {
@@ -21,6 +38,51 @@ export class ApiError extends Error {
   }
 }
 
+export interface SessionSnapshot {
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  accessToken: string | null;
+  refreshToken: string | null;
+}
+
+export function getSessionSnapshot(): SessionSnapshot {
+  const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!accessToken) {
+    return {
+      isAuthenticated: false,
+      isAdmin: false,
+      accessToken: null,
+      refreshToken,
+    };
+  }
+
+  const payload = parseJwtPayload(accessToken);
+  const isAdmin = Boolean(payload?.is_admin);
+  return {
+    isAuthenticated: true,
+    isAdmin,
+    accessToken,
+    refreshToken,
+  };
+}
+
+function emitAuthChange(): void {
+  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+}
+
+export function storeSessionTokens(tokens: TokenResponse): void {
+  localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token);
+  localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token);
+  emitAuthChange();
+}
+
+export function clearStoredSessionTokens(): void {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  emitAuthChange();
+}
+
 async function request<TResponse>(input: string, init?: RequestInit): Promise<TResponse> {
   const response = await fetch(input, {
     ...init,
@@ -30,8 +92,11 @@ async function request<TResponse>(input: string, init?: RequestInit): Promise<TR
     },
   });
 
-  if (response.status === 401 && window.location.pathname !== "/login") {
-    window.location.href = "/login";
+  if (response.status === 401) {
+    clearStoredSessionTokens();
+    if (window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
     throw new ApiError("Unauthorized", 401, null);
   }
 
@@ -48,16 +113,15 @@ async function request<TResponse>(input: string, init?: RequestInit): Promise<TR
   if (response.status === 204) {
     return undefined as TResponse;
   }
-
   return (await response.json()) as TResponse;
 }
 
 function accessTokenHeader(): Record<string, string> {
-  const accessToken = localStorage.getItem("access_token");
-  if (!accessToken) {
+  const snapshot = getSessionSnapshot();
+  if (!snapshot.accessToken) {
     return {};
   }
-  return { Authorization: `Bearer ${accessToken}` };
+  return { Authorization: `Bearer ${snapshot.accessToken}` };
 }
 
 export interface LiveHealthResponse {
@@ -146,6 +210,90 @@ export interface OwnerInboxResponse {
   messages: RelayMessageResponse[];
 }
 
+export interface StickerSummary {
+  code: string;
+  status: string;
+  item_id: string | null;
+  assigned_once: boolean;
+  claimed_at: string | null;
+  invalidated_at: string | null;
+  replaced_by_code: string | null;
+  qr_scan_url: string;
+}
+
+export interface ClaimPackResponse {
+  pack_code: string;
+  total_stickers: number;
+  stickers: StickerSummary[];
+}
+
+export interface UserStickersResponse {
+  stickers: StickerSummary[];
+}
+
+export interface OwnerItemSummary {
+  item_id: string;
+  item_name: string;
+  category: string;
+  description: string;
+  is_lost: boolean;
+  sticker_code: string | null;
+  sticker_status: string | null;
+  created_at: string;
+}
+
+export interface UserItemsResponse {
+  items: OwnerItemSummary[];
+}
+
+export interface RegenerateStickerResponse {
+  replaced_code: string;
+  replacement: StickerSummary;
+}
+
+export interface ClaimIssueResponse {
+  audit_event_id: number;
+  message: string;
+}
+
+export interface StickerPackSummary {
+  id: string;
+  pack_code: string;
+  total_stickers: number;
+  status: string;
+  assigned_user_id: string | null;
+  created_at: string;
+  claimed_at: string | null;
+}
+
+export interface GeneratePackResponse {
+  pack: StickerPackSummary;
+  stickers: StickerSummary[];
+}
+
+export interface ListPacksResponse {
+  packs: StickerPackSummary[];
+}
+
+export interface PackStickersResponse {
+  pack: StickerPackSummary;
+  stickers: StickerSummary[];
+}
+
+export interface AdminOverviewResponse {
+  users: number;
+  packs: number;
+  stickers: number;
+  claimed_packs: number;
+  unassigned_stickers: number;
+}
+
+export interface CreateUserAndAssignPackResponse {
+  user_id: string;
+  email: string;
+  assigned_pack_code: string | null;
+}
+
 export async function getHealthLive(): Promise<LiveHealthResponse> {
   return request<LiveHealthResponse>(apiUrl("/health/live"), { method: "GET" });
 }
@@ -190,15 +338,52 @@ export async function logout(payload: RefreshRequest): Promise<void> {
   });
 }
 
+export async function claimPack(packCode: string): Promise<ClaimPackResponse> {
+  return request<ClaimPackResponse>(apiUrl("/api/v1/recovery/packs/claim"), {
+    method: "POST",
+    headers: accessTokenHeader(),
+    body: JSON.stringify({ pack_code: packCode }),
+  });
+}
+
+export async function listMyStickers(): Promise<UserStickersResponse> {
+  return request<UserStickersResponse>(apiUrl("/api/v1/recovery/stickers/mine"), {
+    method: "GET",
+    headers: accessTokenHeader(),
+  });
+}
+
+export async function listMyItems(): Promise<UserItemsResponse> {
+  return request<UserItemsResponse>(apiUrl("/api/v1/recovery/items/mine"), {
+    method: "GET",
+    headers: accessTokenHeader(),
+  });
+}
+
 export async function registerSticker(
   payload: RegisterStickerRequest,
 ): Promise<RegisterStickerResponse> {
   return request<RegisterStickerResponse>(apiUrl("/api/v1/recovery/stickers/register"), {
     method: "POST",
-    headers: {
-      ...accessTokenHeader(),
-    },
+    headers: accessTokenHeader(),
     body: JSON.stringify(payload),
+  });
+}
+
+export async function regenerateSticker(stickerCode: string): Promise<RegenerateStickerResponse> {
+  return request<RegenerateStickerResponse>(
+    apiUrl(`/api/v1/recovery/stickers/${stickerCode}/regenerate`),
+    {
+      method: "POST",
+      headers: accessTokenHeader(),
+    },
+  );
+}
+
+export async function invalidateSticker(stickerCode: string): Promise<void> {
+  return request<void>(apiUrl(`/api/v1/recovery/stickers/${stickerCode}/invalidate`), {
+    method: "POST",
+    headers: accessTokenHeader(),
   });
 }
 
@@ -208,10 +393,15 @@ export async function markItemLost(
 ): Promise<LostReportResponse> {
   return request<LostReportResponse>(apiUrl(`/api/v1/recovery/items/${itemId}/mark-lost`), {
     method: "POST",
-    headers: {
-      ...accessTokenHeader(),
-    },
+    headers: accessTokenHeader(),
     body: JSON.stringify(payload),
+  });
+}
+
+export async function markItemFound(itemId: string): Promise<void> {
+  return request<void>(apiUrl(`/api/v1/recovery/items/${itemId}/mark-found`), {
+    method: "POST",
+    headers: accessTokenHeader(),
   });
 }
 
@@ -219,6 +409,17 @@ export async function scanSticker(payload: ScanStickerRequest): Promise<ScanStic
   return request<ScanStickerResponse>(apiUrl("/api/v1/recovery/scan"), {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function reportClaimIssue(
+  stickerCode: string,
+  note: string,
+): Promise<ClaimIssueResponse> {
+  return request<ClaimIssueResponse>(apiUrl("/api/v1/recovery/claim-issues"), {
+    method: "POST",
+    headers: accessTokenHeader(),
+    body: JSON.stringify({ sticker_code: stickerCode, note }),
   });
 }
 
@@ -235,9 +436,7 @@ export async function sendFinderMessage(
 export async function listOwnerMessages(): Promise<OwnerInboxResponse> {
   return request<OwnerInboxResponse>(apiUrl("/api/v1/recovery/owner/messages"), {
     method: "GET",
-    headers: {
-      ...accessTokenHeader(),
-    },
+    headers: accessTokenHeader(),
   });
 }
 
@@ -249,30 +448,71 @@ export async function sendOwnerMessage(
     apiUrl(`/api/v1/recovery/owner/sessions/${sessionReference}/messages`),
     {
       method: "POST",
-      headers: {
-        ...accessTokenHeader(),
-      },
+      headers: accessTokenHeader(),
       body: JSON.stringify(payload),
     },
   );
 }
 
+export async function adminOverview(): Promise<AdminOverviewResponse> {
+  return request<AdminOverviewResponse>(apiUrl("/api/v1/admin/overview"), {
+    method: "GET",
+    headers: accessTokenHeader(),
+  });
+}
+
+export async function adminGeneratePack(quantity: number): Promise<GeneratePackResponse> {
+  return request<GeneratePackResponse>(apiUrl("/api/v1/admin/packs/generate"), {
+    method: "POST",
+    headers: accessTokenHeader(),
+    body: JSON.stringify({ quantity }),
+  });
+}
+
+export async function adminListPacks(): Promise<ListPacksResponse> {
+  return request<ListPacksResponse>(apiUrl("/api/v1/admin/packs"), {
+    method: "GET",
+    headers: accessTokenHeader(),
+  });
+}
+
+export async function adminPackStickers(packId: string): Promise<PackStickersResponse> {
+  return request<PackStickersResponse>(apiUrl(`/api/v1/admin/packs/${packId}/stickers`), {
+    method: "GET",
+    headers: accessTokenHeader(),
+  });
+}
+
+export async function adminCreateUserAndAssignPack(
+  email: string,
+  password: string,
+  packCode: string | null,
+): Promise<CreateUserAndAssignPackResponse> {
+  return request<CreateUserAndAssignPackResponse>(apiUrl("/api/v1/admin/users/create-and-assign-pack"), {
+    method: "POST",
+    headers: accessTokenHeader(),
+    body: JSON.stringify({
+      email,
+      password,
+      pack_code: packCode?.trim() ? packCode.trim() : null,
+    }),
+  });
+}
+
 export async function refreshStoredSession(): Promise<TokenResponse> {
-  const refreshToken = localStorage.getItem("refresh_token");
-  if (!refreshToken) {
+  const snapshot = getSessionSnapshot();
+  if (!snapshot.refreshToken) {
     throw new ApiError("Missing refresh token", 400, null);
   }
-  const nextTokens = await refresh({ refresh_token: refreshToken });
-  localStorage.setItem("access_token", nextTokens.access_token);
-  localStorage.setItem("refresh_token", nextTokens.refresh_token);
+  const nextTokens = await refresh({ refresh_token: snapshot.refreshToken });
+  storeSessionTokens(nextTokens);
   return nextTokens;
 }
 
 export async function logoutStoredSession(): Promise<void> {
-  const refreshToken = localStorage.getItem("refresh_token");
-  if (refreshToken) {
-    await logout({ refresh_token: refreshToken });
+  const snapshot = getSessionSnapshot();
+  if (snapshot.refreshToken) {
+    await logout({ refresh_token: snapshot.refreshToken });
   }
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("refresh_token");
+  clearStoredSessionTokens();
 }

@@ -35,6 +35,7 @@ from app.models.item import Item
 from app.models.lost_item_report import LostItemReport
 from app.models.qr_sticker import QRSticker
 from app.models.refresh_token import RefreshToken
+from app.models.sticker_pack import StickerPack
 from app.models.user import User
 from app.repositories.user_repo import UserRepository
 
@@ -49,6 +50,7 @@ async def test_engine() -> AsyncGenerator[AsyncEngine, None]:
         AuditLog,
         Item,
         QRSticker,
+        StickerPack,
         LostItemReport,
         FinderSession,
         AnonymousMessage,

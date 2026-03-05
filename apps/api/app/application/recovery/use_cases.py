@@ -25,10 +25,18 @@ from app.domain.recovery.services import (
 class RecoveryUseCaseError(Exception):
     """Application-layer exception mapped to API error responses by routers."""
 
-    def __init__(self, *, code: str, message: str, status_code: int) -> None:
+    def __init__(
+        self,
+        *,
+        code: str,
+        message: str,
+        status_code: int,
+        details: dict[str, str] | None = None,
+    ) -> None:
         self.code = code
         self.message = message
         self.status_code = status_code
+        self.details = details or {}
         super().__init__(message)
 
 
@@ -49,12 +57,36 @@ class RecoveryUseCases:
         self.finder_session_ttl_minutes = finder_session_ttl_minutes
 
     async def register_sticker(self, *, command: RegisterStickerCommand) -> RegisteredStickerDTO:
-        """Register a new sticker and attached owner item in one transaction flow."""
+        """Attach a claimed sticker to a newly created owner item."""
         existing = await self.repository.get_sticker_by_code(code=command.sticker_code)
-        if existing is not None:
+        if existing is None:
             raise RecoveryUseCaseError(
-                code="STICKER_CODE_EXISTS",
-                message="Sticker code is already registered",
+                code="STICKER_NOT_FOUND",
+                message="Sticker code not found. Use a valid platform-issued sticker.",
+                status_code=404,
+            )
+        if existing.owner_user_id is None:
+            raise RecoveryUseCaseError(
+                code="STICKER_UNCLAIMED",
+                message="Sticker is not claimed yet. Claim your sticker pack first.",
+                status_code=409,
+            )
+        if existing.owner_user_id != command.owner_user_id:
+            raise RecoveryUseCaseError(
+                code="FORBIDDEN",
+                message="Sticker belongs to another account.",
+                status_code=403,
+            )
+        if existing.assigned_once or existing.item_id is not None:
+            raise RecoveryUseCaseError(
+                code="STICKER_ALREADY_USED",
+                message="Sticker can only be assigned once and is already linked.",
+                status_code=409,
+            )
+        if existing.status == StickerStatus.DISABLED:
+            raise RecoveryUseCaseError(
+                code="STICKER_DISABLED",
+                message="Sticker is disabled and cannot be used.",
                 status_code=409,
             )
 
@@ -65,12 +97,17 @@ class RecoveryUseCases:
             description=command.item_description,
         )
 
-        sticker = await self.repository.create_sticker_for_owner(
+        sticker = await self.repository.attach_sticker_to_item(
+            sticker_code=command.sticker_code,
             owner_user_id=command.owner_user_id,
-            code=command.sticker_code,
             item_id=item.id,
-            status=StickerStatus.ASSIGNED,
         )
+        if sticker is None:
+            raise RecoveryUseCaseError(
+                code="STICKER_ASSIGNMENT_FAILED",
+                message="Sticker could not be attached to this item.",
+                status_code=409,
+            )
 
         return RegisteredStickerDTO(
             item_id=item.id,
@@ -116,11 +153,29 @@ class RecoveryUseCases:
     async def start_finder_session(self, *, command: StartFinderSessionCommand) -> FinderSessionDTO:
         """Create an expiring finder session from scanned sticker code."""
         sticker = await self.repository.get_sticker_by_code(code=command.sticker_code)
-        if sticker is None or sticker.item_id is None:
+        if sticker is None:
             raise RecoveryUseCaseError(
                 code="STICKER_NOT_FOUND",
-                message="Sticker not found or not activated",
+                message="Sticker not found",
                 status_code=404,
+            )
+        if sticker.owner_user_id is None:
+            raise RecoveryUseCaseError(
+                code="STICKER_UNCLAIMED",
+                message="Sticker belongs to an unclaimed pack. Please register and claim it.",
+                status_code=409,
+            )
+        if sticker.item_id is None:
+            raise RecoveryUseCaseError(
+                code="STICKER_UNREGISTERED",
+                message="Sticker is claimed but not yet linked to an item.",
+                status_code=409,
+            )
+        if sticker.status == StickerStatus.DISABLED:
+            raise RecoveryUseCaseError(
+                code="STICKER_DISABLED",
+                message="Sticker is disabled",
+                status_code=410,
             )
 
         expires_at = compute_session_expiry(ttl_minutes=self.finder_session_ttl_minutes)

@@ -16,18 +16,29 @@ from app.db.session import get_session
 from app.domain.recovery.entities import SenderRole
 from app.infrastructure.recovery.notifier import LoggingNotificationAdapter
 from app.infrastructure.recovery.sqlalchemy_gateway import SqlAlchemyRecoveryRepository
-from app.routers.deps.auth import get_current_user_id
+from app.models.qr_sticker import QRSticker
+from app.routers.deps.auth import get_current_user_id, get_optional_user_id
 from app.schemas.recovery import (
+    ClaimIssueRequest,
+    ClaimIssueResponse,
+    ClaimPackRequest,
+    ClaimPackResponse,
     LostReportResponse,
     MarkItemLostRequest,
     OwnerInboxResponse,
+    OwnerItemSummary,
+    RegenerateStickerResponse,
     RegisterStickerRequest,
     RegisterStickerResponse,
     RelayMessageRequest,
     RelayMessageResponse,
     ScanStickerRequest,
     ScanStickerResponse,
+    StickerSummary,
+    UserItemsResponse,
+    UserStickersResponse,
 )
+from app.services.sticker_service import StickerService
 
 router = APIRouter(prefix="/recovery", tags=["recovery"])
 
@@ -45,7 +56,27 @@ def _build_use_cases(session: AsyncSession) -> RecoveryUseCases:
 
 def _raise_api_error(exc: RecoveryUseCaseError) -> None:
     """Translate application-layer exception into standardized API error."""
-    raise AppError(code=exc.code, message=exc.message, status_code=exc.status_code) from exc
+    raise AppError(
+        code=exc.code,
+        message=exc.message,
+        status_code=exc.status_code,
+        details=exc.details,
+    ) from exc
+
+
+def _build_sticker_summary(sticker: QRSticker, request: Request) -> StickerSummary:
+    """Map sticker ORM model to API DTO including scan URL for QR payload generation."""
+    scan_url = str(request.url_for("spa_fallback", full_path="scan"))
+    return StickerSummary(
+        code=sticker.code,
+        status=sticker.status,
+        item_id=sticker.item_id,
+        assigned_once=sticker.assigned_once,
+        claimed_at=sticker.claimed_at,
+        invalidated_at=sticker.invalidated_at,
+        replaced_by_code=sticker.replaced_by_code,
+        qr_scan_url=f"{scan_url}?code={sticker.code}",
+    )
 
 
 @router.post(
@@ -78,6 +109,96 @@ async def register_sticker(
         sticker_code=result.sticker_code,
         status=result.status,
     )
+
+
+@router.post("/packs/claim", response_model=ClaimPackResponse, status_code=status.HTTP_200_OK)
+async def claim_pack(
+    payload: ClaimPackRequest,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+) -> ClaimPackResponse:
+    """Claim printed pack code and assign all stickers in pack to current owner."""
+    service = StickerService(session)
+    stickers = await service.claim_pack(user_id=user_id, pack_code=payload.pack_code.strip())
+    return ClaimPackResponse(
+        pack_code=payload.pack_code.strip(),
+        total_stickers=len(stickers),
+        stickers=[_build_sticker_summary(sticker, request) for sticker in stickers],
+    )
+
+
+@router.get("/stickers/mine", response_model=UserStickersResponse, status_code=status.HTTP_200_OK)
+async def list_my_stickers(
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+) -> UserStickersResponse:
+    """Return current owner's sticker inventory for dashboard management."""
+    service = StickerService(session)
+    stickers = await service.list_user_stickers(user_id=user_id)
+    return UserStickersResponse(
+        stickers=[_build_sticker_summary(sticker, request) for sticker in stickers]
+    )
+
+
+@router.get("/items/mine", response_model=UserItemsResponse, status_code=status.HTTP_200_OK)
+async def list_my_items(
+    user_id: str = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+) -> UserItemsResponse:
+    """Return current owner's item inventory with sticker linkage state."""
+    service = StickerService(session)
+    items = await service.list_owner_items(user_id=user_id)
+    return UserItemsResponse(
+        items=[
+            OwnerItemSummary(
+                item_id=item.id,
+                item_name=item.display_name,
+                category=item.category,
+                description=item.description,
+                is_lost=item.is_lost,
+                sticker_code=sticker.code if sticker is not None else None,
+                sticker_status=sticker.status if sticker is not None else None,
+                created_at=item.created_at,
+            )
+            for item, sticker in items
+        ]
+    )
+
+
+@router.post(
+    "/stickers/{sticker_code}/regenerate",
+    response_model=RegenerateStickerResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def regenerate_sticker(
+    sticker_code: str,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+) -> RegenerateStickerResponse:
+    """Invalidate one unbound sticker code and issue a replacement code."""
+    service = StickerService(session)
+    replacement = await service.regenerate_sticker(user_id=user_id, sticker_code=sticker_code)
+    return RegenerateStickerResponse(
+        replaced_code=sticker_code,
+        replacement=_build_sticker_summary(replacement, request),
+    )
+
+
+@router.post(
+    "/stickers/{sticker_code}/invalidate",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def invalidate_sticker(
+    sticker_code: str,
+    user_id: str = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    """Invalidate unbound sticker so scans can no longer open sessions."""
+    service = StickerService(session)
+    await service.invalidate_sticker(user_id=user_id, sticker_code=sticker_code)
 
 
 @router.post(
@@ -113,6 +234,20 @@ async def mark_item_lost(
     )
 
 
+@router.post(
+    "/items/{item_id}/mark-found",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def mark_item_found(
+    item_id: str,
+    user_id: str = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    """Mark owner item as recovered after successful return."""
+    service = StickerService(session)
+    await service.mark_item_found(user_id=user_id, item_id=item_id)
+
+
 @router.post("/scan", response_model=ScanStickerResponse, status_code=status.HTTP_200_OK)
 async def scan_sticker(
     payload: ScanStickerRequest,
@@ -137,6 +272,29 @@ async def scan_sticker(
         item_name=result.item_name,
         owner_hint=result.owner_hint,
         expires_at=result.expires_at,
+    )
+
+
+@router.post(
+    "/claim-issues",
+    response_model=ClaimIssueResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def report_claim_issue(
+    payload: ClaimIssueRequest,
+    user_id: str | None = Depends(get_optional_user_id),
+    session: AsyncSession = Depends(get_session),
+) -> ClaimIssueResponse:
+    """Submit support event for already-claimed or invalid sticker pack issues."""
+    service = StickerService(session)
+    event_id = await service.report_claim_issue(
+        sticker_code=payload.sticker_code,
+        reporter_user_id=user_id,
+        note=payload.note,
+    )
+    return ClaimIssueResponse(
+        audit_event_id=event_id,
+        message="Claim issue submitted. Support team will review this sticker.",
     )
 
 

@@ -55,9 +55,11 @@ class AuthService:
                 status_code=409,
             )
 
-        user = await self.user_repo.create_user(
+        admin_count = await self.user_repo.count_admin_users()
+        user = await self.user_repo.create_user_with_role(
             email=email,
             password_hash=hash_password(password),
+            is_admin=admin_count == 0,
         )
         return user.id, user.email
 
@@ -66,11 +68,15 @@ class AuthService:
         access_expires = timedelta(minutes=self.settings.access_token_ttl_minutes)
         refresh_expires = timedelta(days=self.settings.refresh_token_ttl_days)
 
+        user = await self.user_repo.get_by_id(user_id)
+        is_admin = bool(user.is_admin) if user is not None else False
+
         access_token = create_jwt_token(
             settings=self.settings,
             subject=user_id,
             token_type=ACCESS_TOKEN_TYPE,
             expires_delta=access_expires,
+            extra_claims={"is_admin": is_admin},
         )
         refresh_token = create_jwt_token(
             settings=self.settings,

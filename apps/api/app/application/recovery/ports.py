@@ -34,15 +34,14 @@ class RecoveryRepositoryPort(Protocol):
     ) -> Item:
         """Persist owner item."""
 
-    async def create_sticker_for_owner(
+    async def attach_sticker_to_item(
         self,
         *,
+        sticker_code: str,
         owner_user_id: str,
-        code: str,
         item_id: str,
-        status: StickerStatus,
-    ) -> QRSticker:
-        """Persist sticker and bind it to an item."""
+    ) -> QRSticker | None:
+        """Attach claimed sticker to owner item if sticker is still eligible."""
 
     async def set_item_lost_state(
         self, *, owner_user_id: str, item_id: str, is_lost: bool

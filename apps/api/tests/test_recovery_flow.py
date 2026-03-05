@@ -1,22 +1,53 @@
-"""Integration test for end-to-end recovery flow: register, scan, and relay messages."""
-
-from uuid import uuid4
+"""Integration test for recovery flow with admin-generated sticker packs."""
 
 import pytest
+from app.core.security import hash_password
+from app.repositories.user_repo import UserRepository
 
 
 @pytest.mark.asyncio
-async def test_recovery_scan_and_anonymous_relay(async_client, sample_user) -> None:
-    """Validate owner and finder can communicate through session relay."""
+async def test_recovery_scan_and_anonymous_relay(async_client, session_maker) -> None:
+    """Validate claim -> register -> scan -> relay workflow."""
+    async with session_maker() as session:
+        repo = UserRepository(session)
+        existing_admin = await repo.get_by_email("owner.admin@example.com")
+        if existing_admin is None:
+            await repo.create_user_with_role(
+                email="owner.admin@example.com",
+                password_hash=hash_password("password123"),
+                is_admin=True,
+            )
+
+    register_response = await async_client.post(
+        "/api/v1/auth/register",
+        json={"email": "owner.secondary@example.com", "password": "password123"},
+    )
+    assert register_response.status_code == 201
+
     login_response = await async_client.post(
         "/api/v1/auth/login",
-        json={"email": sample_user["email"], "password": sample_user["password"]},
+        json={"email": "owner.admin@example.com", "password": "password123"},
     )
     assert login_response.status_code == 200
     access_token = login_response.json()["access_token"]
-
     owner_headers = {"Authorization": f"Bearer {access_token}"}
-    sticker_code = f"SAFE-{uuid4().hex[:10].upper()}"
+
+    pack_response = await async_client.post(
+        "/api/v1/admin/packs/generate",
+        headers=owner_headers,
+        json={"quantity": 1},
+    )
+    assert pack_response.status_code == 201
+    sticker_code = pack_response.json()["stickers"][0]["code"]
+    pack_code = pack_response.json()["pack"]["pack_code"]
+
+    claim_response = await async_client.post(
+        "/api/v1/recovery/packs/claim",
+        headers=owner_headers,
+        json={"pack_code": pack_code},
+    )
+    assert claim_response.status_code == 200
+    assert claim_response.json()["total_stickers"] == 1
 
     register_response = await async_client.post(
         "/api/v1/recovery/stickers/register",
@@ -62,6 +93,10 @@ async def test_recovery_scan_and_anonymous_relay(async_client, sample_user) -> N
     assert owner_inbox_response.status_code == 200
     assert len(owner_inbox_response.json()["messages"]) >= 1
 
+    items_response = await async_client.get("/api/v1/recovery/items/mine", headers=owner_headers)
+    assert items_response.status_code == 200
+    assert any(item["item_id"] == item_id for item in items_response.json()["items"])
+
     owner_reply_response = await async_client.post(
         f"/api/v1/recovery/owner/sessions/{session_reference}/messages",
         headers=owner_headers,
@@ -69,3 +104,18 @@ async def test_recovery_scan_and_anonymous_relay(async_client, sample_user) -> N
     )
     assert owner_reply_response.status_code == 201
     assert owner_reply_response.json()["sender_role"] == "owner"
+
+    claim_issue_response = await async_client.post(
+        "/api/v1/recovery/claim-issues",
+        json={
+            "sticker_code": sticker_code,
+            "note": "Testing issue reporting flow from recovery test.",
+        },
+    )
+    assert claim_issue_response.status_code == 201
+
+    mark_found_response = await async_client.post(
+        f"/api/v1/recovery/items/{item_id}/mark-found",
+        headers=owner_headers,
+    )
+    assert mark_found_response.status_code == 204
