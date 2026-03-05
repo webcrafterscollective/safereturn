@@ -34,7 +34,9 @@ jobs:
         run: mypy apps/api
 
       - name: Pytest with coverage
-        run: python -m pytest --cov=apps/api/app --cov-report=term-missing
+        env:
+          PYTHONPATH: apps/api
+        run: python -m pytest --cov=app --cov-report=term-missing
 
   frontend:
     runs-on: ubuntu-latest
