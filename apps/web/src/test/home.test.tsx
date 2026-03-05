@@ -18,7 +18,7 @@ vi.mock("../lib/api/client", () => ({
 describe("HomeRoute", () => {
   it("renders template title", async () => {
     render(<HomeRoute />);
-    expect(await screen.findByText("FastAPI + Preact Production Template")).toBeInTheDocument();
+    expect(await screen.findByText("SafeReturn Platform")).toBeInTheDocument();
   });
 });
 

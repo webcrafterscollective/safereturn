@@ -7,7 +7,12 @@ from logging.config import fileConfig
 from alembic import context
 from app.core.settings import get_settings
 from app.db.base import Base
+from app.models.anonymous_message import AnonymousMessage
 from app.models.audit_log import AuditLog
+from app.models.finder_session import FinderSession
+from app.models.item import Item
+from app.models.lost_item_report import LostItemReport
+from app.models.qr_sticker import QRSticker
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from sqlalchemy import pool
@@ -20,7 +25,16 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Import models so metadata includes every table.
-_ = (User, RefreshToken, AuditLog)
+_ = (
+    User,
+    RefreshToken,
+    AuditLog,
+    Item,
+    QRSticker,
+    LostItemReport,
+    FinderSession,
+    AnonymousMessage,
+)
 target_metadata = Base.metadata
 
 

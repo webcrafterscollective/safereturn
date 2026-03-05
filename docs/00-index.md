@@ -10,6 +10,7 @@ This folder explains how the system is designed, built, deployed, and operated.
 - `30-data-models.md`: Database models, indexes, and ERD
 - `40-infra-runbook.md`: Environment and incident runbook
 - `50-cicd.md`: CI/CD design and release process
+- `60-safe-return-architecture-audit.md`: Clean architecture audit + user journeys
 
 ## Where everything is
 
@@ -27,6 +28,7 @@ This folder explains how the system is designed, built, deployed, and operated.
 3. `30-data-models.md`
 4. `40-infra-runbook.md`
 5. `50-cicd.md`
+6. `60-safe-return-architecture-audit.md`
 
 ## Glossary
 

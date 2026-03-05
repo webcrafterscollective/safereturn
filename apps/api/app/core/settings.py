@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     - TRUSTED_HOSTS: Comma-separated trusted hostnames.
     - PROMETHEUS_ENABLED: Enable or disable /metrics endpoint.
     - REQUEST_TIMEOUT_SECONDS: Request timeout budget for future middleware/hooks.
+    - FINDER_SESSION_TTL_MINUTES: Session lifetime for anonymous finder links.
     - FRONTEND_DIST_PATH: Absolute or relative path to frontend dist assets.
     """
 
@@ -56,6 +57,7 @@ class Settings(BaseSettings):
 
     prometheus_enabled: bool = Field(default=True, alias="PROMETHEUS_ENABLED")
     request_timeout_seconds: int = Field(default=30, alias="REQUEST_TIMEOUT_SECONDS")
+    finder_session_ttl_minutes: int = Field(default=60, alias="FINDER_SESSION_TTL_MINUTES")
 
     frontend_dist_path: str = Field(default="", alias="FRONTEND_DIST_PATH")
 

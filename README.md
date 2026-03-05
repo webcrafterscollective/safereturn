@@ -8,6 +8,12 @@ Production-ready monorepo template for:
 - Linode deployment with Caddy TLS
 - GitHub Actions CI/CD
 
+SafeReturn business flow now included:
+- QR sticker registration for owner items
+- Finder scan session with expiring anonymous token
+- Anonymous finder-owner message relay
+- Owner inbox for secure replies
+
 ## Architecture Overview
 
 ```text
@@ -39,6 +45,20 @@ Open:
 - API docs: `http://localhost:8000/doc`
 - OpenAPI: `http://localhost:8000/openapi.json`
 - Frontend: `http://localhost:8000/`
+
+Core recovery API samples:
+
+```bash
+# Login first to get access token.
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test.user@example.com","password":"password123"}'
+
+# Public finder scan flow.
+curl -X POST http://localhost:8000/api/v1/recovery/scan \
+  -H "Content-Type: application/json" \
+  -d '{"sticker_code":"SAFE-ABCD-001","finder_note":"Found near station"}'
+```
 
 ## Local Full Stack (API + Web + DB)
 

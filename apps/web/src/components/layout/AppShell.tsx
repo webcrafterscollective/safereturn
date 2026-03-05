@@ -36,6 +36,12 @@ export function AppShell({ children }: AppShellProps) {
             <Link href="/login" className={`rounded px-3 py-1.5 text-sm ${location === "/login" ? "bg-brand-500 text-white" : "hover:bg-slate-200 dark:hover:bg-slate-800"}`}>
               Login
             </Link>
+            <Link href="/scan" className={`rounded px-3 py-1.5 text-sm ${location === "/scan" ? "bg-brand-500 text-white" : "hover:bg-slate-200 dark:hover:bg-slate-800"}`}>
+              Finder
+            </Link>
+            <Link href="/inbox" className={`rounded px-3 py-1.5 text-sm ${location === "/inbox" ? "bg-brand-500 text-white" : "hover:bg-slate-200 dark:hover:bg-slate-800"}`}>
+              Owner
+            </Link>
             <button
               type="button"
               className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"

@@ -5,7 +5,9 @@ import { Route, Router } from "wouter-preact";
 
 import { AppShell } from "./components/layout/AppShell";
 import { HomeRoute } from "./routes/Home";
+import { InboxRoute } from "./routes/Inbox";
 import { LoginRoute } from "./routes/Login";
+import { ScanRoute } from "./routes/Scan";
 import "./styles/tailwind.css";
 
 const queryClient = new QueryClient();
@@ -47,6 +49,8 @@ function AppRouter() {
     <Router>
       <Route path="/" component={HomeRoute} />
       <Route path="/login" component={LoginRoute} />
+      <Route path="/scan" component={ScanRoute} />
+      <Route path="/inbox" component={InboxRoute} />
       <Route path="/:rest*" component={HomeRoute} />
     </Router>
   );

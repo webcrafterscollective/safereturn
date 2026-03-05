@@ -28,7 +28,12 @@ from app.core.security import hash_password
 from app.db.base import Base
 from app.db.session import get_session
 from app.main import app
+from app.models.anonymous_message import AnonymousMessage
 from app.models.audit_log import AuditLog
+from app.models.finder_session import FinderSession
+from app.models.item import Item
+from app.models.lost_item_report import LostItemReport
+from app.models.qr_sticker import QRSticker
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.repositories.user_repo import UserRepository
@@ -38,7 +43,16 @@ from app.repositories.user_repo import UserRepository
 async def test_engine() -> AsyncGenerator[AsyncEngine, None]:
     """Create SQLite test engine and schema once for test session."""
     # Import models to ensure metadata is complete for create_all.
-    _ = (User, RefreshToken, AuditLog)
+    _ = (
+        User,
+        RefreshToken,
+        AuditLog,
+        Item,
+        QRSticker,
+        LostItemReport,
+        FinderSession,
+        AnonymousMessage,
+    )
 
     engine: AsyncEngine = create_async_engine(os.environ["DATABASE_URL"], future=True)
     async with engine.begin() as connection:

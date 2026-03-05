@@ -1,5 +1,6 @@
 /** Home route showing responsive layout and API health status query. */
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter-preact";
 
 import { getHealthLive } from "../lib/api/client";
 
@@ -21,11 +22,19 @@ export function HomeRoute() {
   return (
     <section className="grid gap-6 md:grid-cols-[2fr_1fr]">
       <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">FastAPI + Preact Production Template</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">SafeReturn Platform</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-          This starter keeps one runtime service for API + SPA, with clean backend layers,
-          typed frontend API calls, and deployment-friendly infrastructure defaults.
+          Privacy-first QR lost-item recovery for individuals and organizations. Finders can
+          contact owners without exposing personal contact details.
         </p>
+        <div className="mt-4 flex gap-3">
+          <Link href="/scan" className="rounded bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
+            I found an item
+          </Link>
+          <Link href="/inbox" className="rounded border border-brand-500 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-slate-800">
+            Owner dashboard
+          </Link>
+        </div>
       </article>
 
       <aside className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
