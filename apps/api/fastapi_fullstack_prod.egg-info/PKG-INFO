@@ -24,6 +24,7 @@ Provides-Extra: dev
 Requires-Dist: aiosqlite>=0.20.0; extra == "dev"
 Requires-Dist: mypy>=1.13.0; extra == "dev"
 Requires-Dist: pytest>=8.3.3; extra == "dev"
+Requires-Dist: pytest-cov>=5.0.0; extra == "dev"
 Requires-Dist: pytest-asyncio>=0.24.0; extra == "dev"
 Requires-Dist: ruff>=0.7.3; extra == "dev"
 Requires-Dist: types-passlib>=1.7.7.20240819; extra == "dev"
@@ -166,6 +167,7 @@ docker compose -f docker-compose.prod.yml up -d
 - `503 on /health/ready`: check `DATABASE_URL`, DB container health, and migrations.
 - Swagger missing at `/doc`: confirm app started with `docs_url='/doc'` and reverse proxy points to API container.
 - Swagger blank page with CSP errors: this template serves Swagger JS/CSS/favicon from `/swagger-assets/*` (same-origin) and uses a docs-only CSP policy that permits inline bootstrap script. If you still see CSP errors, verify `/swagger-assets/swagger-ui-bundle.js` returns `200`.
+- `Bind for 0.0.0.0:5432 failed`: set `POSTGRES_PORT=5433` in `.env` or stop the process/container already using `5432`.
 - SPA route refresh returns 404: verify FastAPI fallback route and frontend `dist` exists in image.
 - `Cannot find module .../node_modules/vite/bin/vite.js` during Docker build: ensure `.dockerignore` excludes `apps/web/node_modules`, then rebuild with `docker compose -f docker-compose.dev.yml build --no-cache`.
 - GHCR pull denied: validate registry credentials and package permissions.
