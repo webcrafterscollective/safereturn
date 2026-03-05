@@ -1,27 +1,69 @@
-version: "3.9"
+# Local full-stack development compose: FastAPI API + Preact dev server + PostgreSQL.
 services:
-  postgres:
-    image: postgres:16
+  db:
+    image: postgres:16-alpine
     environment:
-      POSTGRES_DB: lostfound
-      POSTGRES_USER: lostfound
-      POSTGRES_PASSWORD: lostfound
+      POSTGRES_DB: ${POSTGRES_DB:-app_db}
+      POSTGRES_USER: ${POSTGRES_USER:-app_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app_password}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app_user} -d ${POSTGRES_DB:-app_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   api:
-    build: .
-    depends_on:
-      - postgres
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: dev
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://lostfound:lostfound@postgres:5432/lostfound
-      JWT_SECRET_KEY: change-me-in-production
-      FERNET_KEY: xVdY8US9hQFoY8A9HtV6nRvWmvMRGsiE9zMDFMvx6bM=
-      ADMIN_API_KEY: dev-admin-key
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-app_user}:${POSTGRES_PASSWORD:-app_password}@db:5432/${POSTGRES_DB:-app_db}
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./apps/web/dist:/app/web_dist
     ports:
       - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: dev
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    command: sh -c "pnpm install --frozen-lockfile && pnpm dev --host 0.0.0.0 --port 5173"
+    volumes:
+      - ./apps/web:/web
+      - web_node_modules:/web/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
-  postgres_data:
+  db_data:
+  web_node_modules:

@@ -1,25 +1,29 @@
-# Python bytecode
+# Ignore environment files, local caches, and build outputs.
+.env
+.env.*
+!.env.example
+
 __pycache__/
 *.py[cod]
-
-# Build artifacts
-build/
-dist/
-*.egg-info/
-
-# Virtual envs
-.venv/
-
-# Tool caches
+*.pyo
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
 
-# Environment files
-.env
+.venv/
+venv/
 
-# IDE
+apps/web/node_modules/
+apps/web/dist/
+
+*.log
+
+# IDE files.
 .vscode/
 .idea/
+
+# OS files.
+.DS_Store
+Thumbs.db

@@ -1,3 +1,34 @@
+Metadata-Version: 2.4
+Name: fastapi-fullstack-prod
+Version: 0.1.0
+Summary: FastAPI + Preact production template
+Author: Template Team
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: alembic>=1.13.2
+Requires-Dist: asyncpg>=0.30.0
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: gunicorn>=22.0.0
+Requires-Dist: httpx>=0.28.0
+Requires-Dist: prometheus-client>=0.21.0
+Requires-Dist: pydantic-settings>=2.6.1
+Requires-Dist: python-jose[cryptography]>=3.3.0
+Requires-Dist: python-multipart>=0.0.9
+Requires-Dist: sqlalchemy[asyncio]>=2.0.36
+Requires-Dist: uvicorn[standard]>=0.32.0
+Requires-Dist: passlib[bcrypt]>=1.7.4
+Requires-Dist: bcrypt<5
+Requires-Dist: email-validator>=2.2.0
+Requires-Dist: swagger-ui-bundle>=1.1.0
+Provides-Extra: dev
+Requires-Dist: aiosqlite>=0.20.0; extra == "dev"
+Requires-Dist: mypy>=1.13.0; extra == "dev"
+Requires-Dist: pytest>=8.3.3; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.24.0; extra == "dev"
+Requires-Dist: ruff>=0.7.3; extra == "dev"
+Requires-Dist: types-passlib>=1.7.7.20240819; extra == "dev"
+Requires-Dist: types-python-jose>=3.4.0.20250224; extra == "dev"
+
 <!-- Root guide for the FastAPI fullstack production template and operations workflows. -->
 # fastapi-fullstack-prod
 
@@ -135,7 +166,6 @@ docker compose -f docker-compose.prod.yml up -d
 - `503 on /health/ready`: check `DATABASE_URL`, DB container health, and migrations.
 - Swagger missing at `/doc`: confirm app started with `docs_url='/doc'` and reverse proxy points to API container.
 - Swagger blank page with CSP errors: this template serves Swagger JS/CSS/favicon from `/swagger-assets/*` (same-origin) and uses a docs-only CSP policy that permits inline bootstrap script. If you still see CSP errors, verify `/swagger-assets/swagger-ui-bundle.js` returns `200`.
-- `Bind for 0.0.0.0:5432 failed`: set `POSTGRES_PORT=5433` in `.env` or stop the process/container already using `5432`.
 - SPA route refresh returns 404: verify FastAPI fallback route and frontend `dist` exists in image.
 - `Cannot find module .../node_modules/vite/bin/vite.js` during Docker build: ensure `.dockerignore` excludes `apps/web/node_modules`, then rebuild with `docker compose -f docker-compose.dev.yml build --no-cache`.
 - GHCR pull denied: validate registry credentials and package permissions.

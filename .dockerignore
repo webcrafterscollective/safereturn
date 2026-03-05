@@ -1,0 +1,28 @@
+# Keep Docker build context small and avoid leaking host dependency folders.
+.git
+.gitignore
+.github
+.venv
+.mypy_cache
+.pytest_cache
+.ruff_cache
+__pycache__
+*.pyc
+*.pyo
+*.log
+.env
+.env.*
+!.env.example
+
+# Frontend host artifacts must never be copied into container builds.
+apps/web/node_modules
+apps/web/dist
+
+# Python cache/build artifacts.
+htmlcov
+.coverage
+build
+dist
+
+# Local runtime files.
+test.db
