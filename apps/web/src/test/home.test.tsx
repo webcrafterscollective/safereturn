@@ -13,6 +13,15 @@ vi.mock("@tanstack/react-query", () => ({
 
 vi.mock("../lib/api/client", () => ({
   getHealthLive: async () => ({ status: "live" }),
+  getHealthReady: async () => ({ status: "ready" }),
+  getMetricsText: async () => "http_requests_total 1",
+  refreshStoredSession: async () => ({
+    access_token: "a",
+    refresh_token: "b",
+    token_type: "bearer",
+    expires_in: 900,
+  }),
+  logoutStoredSession: async () => undefined,
 }));
 
 describe("HomeRoute", () => {

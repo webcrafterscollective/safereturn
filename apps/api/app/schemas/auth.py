@@ -10,6 +10,13 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=8, examples=["strong-password"])
 
 
+class RegisterRequest(BaseModel):
+    """Registration payload for creating a new owner account."""
+
+    email: EmailStr = Field(examples=["owner@example.com"])
+    password: str = Field(min_length=8, examples=["strong-password"])
+
+
 class RefreshRequest(BaseModel):
     """Refresh request payload containing refresh token."""
 
@@ -29,3 +36,10 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int
+
+
+class RegisterResponse(BaseModel):
+    """Registration response returned after account creation."""
+
+    user_id: str
+    email: EmailStr

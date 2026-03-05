@@ -1,4 +1,6 @@
 # Development compose file with FastAPI reload and local Postgres.
+name: safe_return_dev
+
 services:
   api:
     build:
@@ -7,7 +9,11 @@ services:
       target: dev
     env_file:
       - .env
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      PYTHONPATH: /app/apps/api
+    command: >
+      sh -c "alembic -c apps/api/alembic.ini upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/apps/api/app"
     volumes:
       - ./apps/api:/app/apps/api
       - ./apps/web/dist:/app/web_dist

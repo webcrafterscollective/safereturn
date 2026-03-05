@@ -1,6 +1,13 @@
 """Pydantic schema package for API request and response contracts."""
 
-from app.schemas.auth import LoginRequest, LogoutRequest, RefreshRequest, TokenResponse
+from app.schemas.auth import (
+    LoginRequest,
+    LogoutRequest,
+    RefreshRequest,
+    RegisterRequest,
+    RegisterResponse,
+    TokenResponse,
+)
 from app.schemas.recovery import (
     LostReportResponse,
     MarkItemLostRequest,
@@ -20,6 +27,8 @@ __all__ = [
     "MarkItemLostRequest",
     "OwnerInboxResponse",
     "RefreshRequest",
+    "RegisterRequest",
+    "RegisterResponse",
     "RegisterStickerRequest",
     "RegisterStickerResponse",
     "RelayMessageRequest",

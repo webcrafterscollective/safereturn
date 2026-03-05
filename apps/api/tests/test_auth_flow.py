@@ -36,3 +36,20 @@ async def test_auth_login_refresh_logout(async_client, sample_user) -> None:
         json={"refresh_token": refresh_payload["refresh_token"]},
     )
     assert reuse_response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_auth_register(async_client) -> None:
+    """Register endpoint should create a new account and block duplicates."""
+    register_response = await async_client.post(
+        "/api/v1/auth/register",
+        json={"email": "new.owner@example.com", "password": "password123"},
+    )
+    assert register_response.status_code == 201
+    assert register_response.json()["email"] == "new.owner@example.com"
+
+    duplicate_response = await async_client.post(
+        "/api/v1/auth/register",
+        json={"email": "new.owner@example.com", "password": "password123"},
+    )
+    assert duplicate_response.status_code == 409

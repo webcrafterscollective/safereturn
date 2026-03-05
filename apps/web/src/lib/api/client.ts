@@ -64,9 +64,23 @@ export interface LiveHealthResponse {
   status: string;
 }
 
+export interface ReadyHealthResponse {
+  status: string;
+}
+
 export interface LoginRequest {
   email: string;
   password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterResponse {
+  user_id: string;
+  email: string;
 }
 
 export interface TokenResponse {
@@ -136,8 +150,27 @@ export async function getHealthLive(): Promise<LiveHealthResponse> {
   return request<LiveHealthResponse>(apiUrl("/health/live"), { method: "GET" });
 }
 
+export async function getHealthReady(): Promise<ReadyHealthResponse> {
+  return request<ReadyHealthResponse>(apiUrl("/health/ready"), { method: "GET" });
+}
+
+export async function getMetricsText(): Promise<string> {
+  const response = await fetch(apiUrl("/metrics"), { method: "GET" });
+  if (!response.ok) {
+    throw new ApiError("Metrics request failed", response.status, null);
+  }
+  return response.text();
+}
+
 export async function login(payload: LoginRequest): Promise<TokenResponse> {
   return request<TokenResponse>(apiUrl("/api/v1/auth/login"), {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function register(payload: RegisterRequest): Promise<RegisterResponse> {
+  return request<RegisterResponse>(apiUrl("/api/v1/auth/register"), {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -222,4 +255,24 @@ export async function sendOwnerMessage(
       body: JSON.stringify(payload),
     },
   );
+}
+
+export async function refreshStoredSession(): Promise<TokenResponse> {
+  const refreshToken = localStorage.getItem("refresh_token");
+  if (!refreshToken) {
+    throw new ApiError("Missing refresh token", 400, null);
+  }
+  const nextTokens = await refresh({ refresh_token: refreshToken });
+  localStorage.setItem("access_token", nextTokens.access_token);
+  localStorage.setItem("refresh_token", nextTokens.refresh_token);
+  return nextTokens;
+}
+
+export async function logoutStoredSession(): Promise<void> {
+  const refreshToken = localStorage.getItem("refresh_token");
+  if (refreshToken) {
+    await logout({ refresh_token: refreshToken });
+  }
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
 }

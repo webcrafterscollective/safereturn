@@ -11,6 +11,7 @@ from app.core.security import (
     TokenError,
     create_jwt_token,
     decode_jwt_token,
+    hash_password,
     hash_refresh_token,
     verify_password,
 )
@@ -43,6 +44,22 @@ class AuthService:
                 status_code=401,
             )
         return user.id
+
+    async def register_user(self, *, email: str, password: str) -> tuple[str, str]:
+        """Create a new active user account with unique email."""
+        existing = await self.user_repo.get_by_email(email)
+        if existing is not None:
+            raise AppError(
+                code="EMAIL_ALREADY_EXISTS",
+                message="An account with this email already exists",
+                status_code=409,
+            )
+
+        user = await self.user_repo.create_user(
+            email=email,
+            password_hash=hash_password(password),
+        )
+        return user.id, user.email
 
     async def issue_tokens(self, *, user_id: str) -> TokenResponse:
         """Issue new access/refresh tokens and persist hashed refresh token."""

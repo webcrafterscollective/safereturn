@@ -156,7 +156,7 @@ export function InboxRoute() {
               className="rounded border border-slate-200 p-3 text-sm dark:border-slate-700"
             >
               <p className="font-medium">
-                {message.sender_role} • session {message.session_reference}
+                {message.sender_role} | session {message.session_reference}
               </p>
               <p className="mt-1 text-slate-700 dark:text-slate-300">{message.body}</p>
             </article>

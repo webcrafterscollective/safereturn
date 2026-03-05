@@ -12,6 +12,30 @@ async def test_openapi_json(async_client) -> None:
 
 
 @pytest.mark.asyncio
+async def test_openapi_includes_all_documented_endpoints(async_client) -> None:
+    """OpenAPI paths should expose all public API endpoints."""
+    response = await async_client.get("/openapi.json")
+    assert response.status_code == 200
+    payload = response.json()
+    expected_paths = {
+        "/api/v1/auth/login",
+        "/api/v1/auth/register",
+        "/api/v1/auth/refresh",
+        "/api/v1/auth/logout",
+        "/api/v1/recovery/stickers/register",
+        "/api/v1/recovery/items/{item_id}/mark-lost",
+        "/api/v1/recovery/scan",
+        "/api/v1/recovery/sessions/{session_token}/messages",
+        "/api/v1/recovery/owner/messages",
+        "/api/v1/recovery/owner/sessions/{session_reference}/messages",
+        "/health/live",
+        "/health/ready",
+        "/metrics",
+    }
+    assert expected_paths.issubset(set(payload["paths"].keys()))
+
+
+@pytest.mark.asyncio
 async def test_swagger_ui_at_doc(async_client) -> None:
     """Swagger UI HTML should be served at /doc with same-origin assets only."""
     response = await async_client.get("/doc")

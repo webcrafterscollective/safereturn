@@ -2,18 +2,20 @@
 import { useState } from "preact/hooks";
 import { useLocation } from "wouter-preact";
 
-import { ApiError, login } from "../lib/api/client";
+import { ApiError, login, register } from "../lib/api/client";
 
 export function LoginRoute() {
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("test.user@example.com");
   const [password, setPassword] = useState("password123");
   const [error, setError] = useState<string>("");
+  const [notice, setNotice] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: Event) {
     event.preventDefault();
     setError("");
+    setNotice("");
     setIsSubmitting(true);
 
     try {
@@ -26,6 +28,25 @@ export function LoginRoute() {
         setError("Invalid credentials. Please try again.");
       } else {
         setError("Login failed due to an unexpected error.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleRegister(event: Event) {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+    setIsSubmitting(true);
+    try {
+      await register({ email, password });
+      setNotice("Account created. You can now sign in with the same credentials.");
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 409) {
+        setError("Account already exists for this email.");
+      } else {
+        setError("Registration failed due to an unexpected error.");
       }
     } finally {
       setIsSubmitting(false);
@@ -68,14 +89,29 @@ export function LoginRoute() {
             {error}
           </p>
         )}
+        {notice && (
+          <p className="rounded border border-emerald-300 bg-emerald-50 p-2 text-sm text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+            {notice}
+          </p>
+        )}
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full rounded bg-brand-500 px-4 py-2 font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {isSubmitting ? "Signing in..." : "Sign in"}
-        </button>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full rounded bg-brand-500 px-4 py-2 font-medium text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isSubmitting ? "Working..." : "Sign in"}
+          </button>
+          <button
+            type="button"
+            onClick={handleRegister}
+            disabled={isSubmitting}
+            className="w-full rounded border border-brand-500 px-4 py-2 font-medium text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-70 dark:text-brand-400 dark:hover:bg-slate-800"
+          >
+            {isSubmitting ? "Working..." : "Create account"}
+          </button>
+        </div>
       </form>
     </section>
   );
