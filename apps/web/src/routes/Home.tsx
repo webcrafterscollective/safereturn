@@ -14,9 +14,9 @@ import {
 
 function HealthSkeleton() {
   return (
-    <div className="animate-pulse rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900" aria-label="Loading health status">
-      <div className="mb-3 h-4 w-40 rounded bg-slate-200 dark:bg-slate-700" />
-      <div className="h-4 w-24 rounded bg-slate-200 dark:bg-slate-700" />
+    <div className="flex animate-pulse flex-col gap-3 rounded-xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800/60 dark:bg-slate-900/50" aria-label="Loading health status">
+      <div className="h-4 w-2/3 rounded-md bg-slate-200 dark:bg-slate-700" />
+      <div className="h-4 w-1/3 rounded-md bg-slate-100 dark:bg-slate-800" />
     </div>
   );
 }
@@ -40,7 +40,7 @@ export function HomeRoute() {
     setAuthError("");
     try {
       await refreshStoredSession();
-      setAuthStatus("Session refreshed using /api/v1/auth/refresh.");
+      setAuthStatus("Session refreshed successfully.");
     } catch (error) {
       if (error instanceof ApiError) {
         setAuthError(`Refresh failed (${error.status}). Login again.`);
@@ -55,7 +55,7 @@ export function HomeRoute() {
     setAuthError("");
     try {
       await logoutStoredSession();
-      setAuthStatus("Session closed using /api/v1/auth/logout.");
+      setAuthStatus("Session closed successfully.");
     } catch {
       setAuthError("Logout failed. Clear tokens and login again.");
     }
@@ -72,92 +72,119 @@ export function HomeRoute() {
   }
 
   return (
-    <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-      <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">SafeReturn Platform</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+    <section className="grid items-start gap-6 lg:grid-cols-[2fr_1fr]">
+      <article className="rounded-2xl border border-slate-200/80 bg-white p-8 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+        <div className="mb-6 inline-flex items-center rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 dark:bg-brand-500/10 dark:text-brand-400">
+          Platform Overview
+        </div>
+        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
+          SafeReturn
+        </h1>
+        <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-600 dark:text-slate-300">
           Privacy-first QR lost-item recovery for individuals and organizations. Finders can
-          contact owners without exposing personal contact details.
+          contact owners securely without ever exposing personal contact details.
         </p>
-        <div className="mt-4 flex gap-3">
-          <Link href="/scan" className="rounded bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
+        <div className="mt-8 flex flex-wrap gap-4">
+          <Link href="/scan" className="inline-flex items-center justify-center rounded-lg bg-brand-500 px-6 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-600 hover:shadow-md focus:ring-4 focus:ring-brand-500/20 active:scale-95">
             I found an item
           </Link>
-          <Link href="/owner" className="rounded border border-brand-500 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-slate-800">
-            Owner dashboard
+          <Link href="/owner" className="inline-flex items-center justify-center rounded-lg border-2 border-slate-200 bg-transparent px-6 py-2.5 text-sm font-semibold text-slate-700 transition-all hover:border-brand-500 hover:bg-slate-50 hover:text-brand-700 focus:ring-4 focus:ring-slate-200 dark:border-slate-700 dark:text-slate-200 dark:hover:border-brand-400 dark:hover:bg-slate-800 dark:hover:text-brand-400 dark:focus:ring-slate-800">
+            Owner Dashboard
           </Link>
           <a
             href="/doc"
-            className="rounded border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+            className="inline-flex items-center justify-center rounded-lg border-2 border-transparent px-6 py-2.5 text-sm font-semibold text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
           >
-            Swagger
+            API Swagger
           </a>
         </div>
       </article>
 
-      <aside className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <h2 className="text-lg font-semibold">API Health and Ops</h2>
-        <div className="mt-4 space-y-3">
+      <aside className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-soft dark:border-slate-800 dark:bg-slate-900">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
+          <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
+          System Status
+        </h2>
+        <div className="mt-6 space-y-4">
           {healthQuery.isPending && <HealthSkeleton />}
+          
           {healthQuery.isError && (
-            <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-950/30 dark:text-red-300">
-              Failed to load health status.
-            </p>
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/30">
+              <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                Failed to load health status.
+              </p>
+            </div>
           )}
+          
           {healthQuery.data && (
-            <p className="rounded border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
-              Service status: <strong>{healthQuery.data.status}</strong>
-            </p>
+            <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800/60 dark:bg-slate-900/50">
+              <span className="text-sm font-medium text-slate-600 dark:text-slate-400">API Service</span>
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400">
+                {healthQuery.data.status}
+              </span>
+            </div>
           )}
+          
           {readyQuery.data && (
-            <p className="rounded border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
-              DB readiness: <strong>{readyQuery.data.status}</strong>
-            </p>
+            <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-800/60 dark:bg-slate-900/50">
+              <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Database</span>
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400">
+                {readyQuery.data.status}
+              </span>
+            </div>
           )}
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleRefreshSession}
-              className="rounded border border-brand-500 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-slate-800"
-            >
-              Refresh Session
-            </button>
-            <button
-              type="button"
-              onClick={handleLogoutSession}
-              className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-            >
-              Logout Session
-            </button>
-            <button
-              type="button"
-              onClick={handleLoadMetrics}
-              className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-            >
-              Load /metrics
-            </button>
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Admin Controls</h3>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleRefreshSession}
+                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-brand-600 active:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-brand-400"
+              >
+                Refresh Session
+              </button>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleLogoutSession}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-red-600 active:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-red-400"
+                >
+                  Logout
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLoadMetrics}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 active:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  Metrics
+                </button>
+              </div>
+            </div>
           </div>
 
           {authStatus && (
-            <p className="rounded border border-emerald-300 bg-emerald-50 p-2 text-xs text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+            <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
               {authStatus}
             </p>
           )}
           {authError && (
-            <p className="rounded border border-red-300 bg-red-50 p-2 text-xs text-red-700 dark:border-red-700 dark:bg-red-950/40 dark:text-red-300">
+            <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
               {authError}
             </p>
           )}
           {metricsPreview && (
-            <pre className="overflow-auto rounded border border-slate-200 bg-slate-50 p-2 text-[11px] leading-5 dark:border-slate-700 dark:bg-slate-950">
-              {metricsPreview}
-            </pre>
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-900 dark:border-slate-700 dark:bg-black">
+              <div className="flex items-center border-b border-slate-700 bg-slate-800 px-3 py-1.5">
+                <span className="text-xs font-medium text-slate-300">/metrics output</span>
+              </div>
+              <pre className="overflow-auto p-3 text-[11px] leading-5 text-emerald-400">
+                {metricsPreview}
+              </pre>
+            </div>
           )}
         </div>
       </aside>
     </section>
   );
 }
-
-
